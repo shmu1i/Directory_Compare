@@ -4,6 +4,7 @@ from PyQt5.QtCore import QUrl, Qt, QSettings, pyqtSignal
 from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtCore import QFileInfo
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QPushButton, QHBoxLayout
+import tempfile
 
 import os
 import sys
@@ -134,18 +135,24 @@ class ResultWidget(QWidget):
         #self.hidden_items_label.setText(f"Hidden Items: {self.directory_comparator.hidden_item_counter}")
 
     def save_hidden_items(self):
+        temp_dir = tempfile.gettempdir()
+        file_path = os.path.join(temp_dir, "dc_hidden.xml")
+
         root = ET.Element("HiddenItems")
         for item in self.hidden_items:
             ET.SubElement(root, "Item").text = item
 
         tree = ET.ElementTree(root)
-        tree.write("dc_hidden.xml")
+        tree.write(file_path)
 
     def load_hidden_items(self):
         hidden_items = set()
 
         try:
-            tree = ET.parse("dc_hidden.xml")
+            temp_dir = tempfile.gettempdir()
+            file_path = os.path.join(temp_dir, "dc_hidden.xml")
+
+            tree = ET.parse(file_path)
             root = tree.getroot()
 
             for item_element in root.findall("Item"):
