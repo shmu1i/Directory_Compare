@@ -4,6 +4,8 @@ from PyQt5.QtCore import QUrl, Qt, QSettings, pyqtSignal
 from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtCore import QFileInfo
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QPushButton, QHBoxLayout
+from PyQt5.QtGui import QKeySequence
+from PyQt5.QtWidgets import QShortcut
 import tempfile
 
 import os
@@ -55,6 +57,15 @@ class ResultWidget(QWidget):
         # Add Hidden Items label
         self.hidden_items_label = QLabel("Hidden Items: 0", self)
         layout.addWidget(self.hidden_items_label)
+        self.toggle_checkbox_shortcut = QShortcut(QKeySequence("Ctrl+Return"), self)
+        self.toggle_checkbox_shortcut.activated.connect(self.toggle_selected_checkbox)
+        
+    def toggle_selected_checkbox(self):
+        selected_item = self.tree_widget.currentItem()
+        if selected_item:
+            checkbox = self.tree_widget.itemWidget(selected_item, 3)
+            checkbox.setChecked(not checkbox.isChecked())    
+
 
     def add_result(self, file, size_dir1, size_dir2):
         item = QTreeWidgetItem([file, str(size_dir1), str(size_dir2)])
