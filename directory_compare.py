@@ -279,7 +279,7 @@ class DirectoryComparator(QWidget):
 
                 if size_dir1 != size_dir2 and file not in self.result_widget.hidden_items:
                     self.result_widget.add_result(file, size_dir1, size_dir2)
-                if file in self.result_widget.hidden_items:
+                if size_dir1 != size_dir2 and file in self.result_widget.hidden_items:
                     self.hidden_item_counter += 1  # Increment the hidden item counter
 
         except Exception as e:
