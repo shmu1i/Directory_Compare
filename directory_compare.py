@@ -1,4 +1,5 @@
 import xml.etree.ElementTree as ET
+from PyQt5.QtWidgets import QDialog, QVBoxLayout, QPushButton, QListWidget, QListWidgetItem
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QFileDialog, QLineEdit, QTreeWidget, QTreeWidgetItem, QErrorMessage, QLabel, QInputDialog, QCheckBox
 from PyQt5.QtCore import QUrl, Qt, QSettings, pyqtSignal
 from PyQt5.QtGui import QDesktopServices
@@ -95,10 +96,19 @@ class ResultWidget(QWidget):
         layout.addLayout(button_layout)
 
     def add_show_hidden_button(self):
-        show_hidden_button = QPushButton("Show Hidden", self)
-        show_hidden_button.clicked.connect(self.show_hidden_items)
-        button_layout = self.layout().itemAt(1).layout()  # Assumes the layout structure
-        button_layout.addWidget(show_hidden_button)
+        #show_hidden_button = QPushButton("Show Hidden", self)
+        #show_hidden_button.clicked.connect(self.show_hidden_items)
+        #button_layout = self.layout().itemAt(1).layout()  # Assumes the layout structure
+        #button_layout.addWidget(show_hidden_button)
+        
+        show_hidden_list_button = QPushButton("Show Hidden Items List", self)
+        show_hidden_list_button.clicked.connect(self.show_hidden_items_list)
+        button_layout = self.layout().itemAt(1).layout()
+        button_layout.addWidget(show_hidden_list_button)
+        
+    def show_hidden_items_list(self):
+        dialog = HiddenItemsDialog(self.hidden_items, self)
+        dialog.exec_()
 
     def hide_selected_items(self):
         for row in range(self.tree_widget.topLevelItemCount()):
@@ -203,6 +213,10 @@ class DirectoryComparator(QWidget):
         self.dir1_label.setText(f"Directory 1: {self.dir1}")
         self.dir2_label.setText(f"Directory 2: {self.dir2}")
         self.result_widget.directory_comparator = self
+        
+        self.hidden_items_dialog = HiddenItemsDialog(self.result_widget.hidden_items, self)
+        self.hidden_items_dialog.hidden_items_unhid.connect(self.compare_directories)
+
 
         # Add a counter attribute
         #self.differences_counter = 0
@@ -319,8 +333,90 @@ class DirectoryComparator(QWidget):
     def update_hidden_items_label(self):
         self.result_widget.update_hidden_items_label()
 
+    def show_hidden_items_list(self):
+        dialog = HiddenItemsDialog(self.result_widget.hidden_items, self)
+        dialog.exec_()
+        
+class HiddenItemsDialog(QDialog):
+    # Add a signal to notify when hidden items are unhid
+    hidden_items_unhid = pyqtSignal()
+
+    def __init__(self, hidden_items, parent=None):
+        super(HiddenItemsDialog, self).__init__(parent)
+        self.setWindowTitle("Hidden Items")
+        self.hidden_items = hidden_items
+
+        layout = QVBoxLayout(self)
+
+        self.hidden_items_list = QListWidget(self)
+        for item in hidden_items:
+            list_item = QListWidgetItem(item)
+            list_item.setFlags(list_item.flags() | Qt.ItemIsUserCheckable)
+            list_item.setCheckState(Qt.Unchecked)
+            self.hidden_items_list.addItem(list_item)
+
+        layout.addWidget(self.hidden_items_list)
+
+        buttons_layout = QHBoxLayout()
+
+        select_all_button = QPushButton("Select All", self)
+        select_all_button.clicked.connect(self.select_all_items)
+        buttons_layout.addWidget(select_all_button)
+
+        deselect_all_button = QPushButton("Deselect All", self)
+        deselect_all_button.clicked.connect(self.deselect_all_items)
+        buttons_layout.addWidget(deselect_all_button)
+
+        layout.addLayout(buttons_layout)
+
+        unhide_button = QPushButton("Unhide Selected", self)
+        unhide_button.clicked.connect(self.unhide_selected_items)
+        layout.addWidget(unhide_button)
+
+        self.setMinimumWidth(600)
+        self.setMinimumHeight(500)
+        self.setLayout(layout)
+
+    def select_all_items(self):
+        for i in range(self.hidden_items_list.count()):
+            item = self.hidden_items_list.item(i)
+            item.setCheckState(Qt.Checked)
+
+    def deselect_all_items(self):
+        for i in range(self.hidden_items_list.count()):
+            item = self.hidden_items_list.item(i)
+            item.setCheckState(Qt.Unchecked)
+
+    def unhide_selected_items(self):
+        selected_items = [self.hidden_items_list.item(i) for i in range(self.hidden_items_list.count()) if
+                          self.hidden_items_list.item(i).checkState() == Qt.Checked]
+
+        for item in selected_items:
+            self.hidden_items.remove(item.text())
+
+        self.save_hidden_items()
+
+        # Emit the signal to notify that hidden items are unhid
+        self.hidden_items_unhid.emit()
+
+        self.close()
+
+    def save_hidden_items(self):
+        temp_dir = tempfile.gettempdir()
+        file_path = os.path.join(temp_dir, "dc_hidden.xml")
+
+        root = ET.Element("HiddenItems")
+        for item in self.hidden_items:
+            ET.SubElement(root, "Item").text = item
+
+        tree = ET.ElementTree(root)
+        tree.write(file_path)
+
+
+
 if __name__ == '__main__':
     app = QApplication([])
     comparator = DirectoryComparator()
     comparator.show()
     app.exec_()
+
